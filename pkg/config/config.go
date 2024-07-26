@@ -161,6 +161,12 @@ func LoadIPAMConfig(bytes []byte, envArgs string, extraConfigPaths ...string) (*
 	// Copy net name into IPAM so not to drag Net struct around
 	n.IPAM.Name = n.Name
 
+	if n.PciBusID != "" {
+		n.IPAM.DevicePciBusID = n.PciBusID
+	} else {
+		n.IPAM.DevicePciBusID = n.DeviceID
+	}
+
 	return n.IPAM, n.CNIVersion, nil
 }
 

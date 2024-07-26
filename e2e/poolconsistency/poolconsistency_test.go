@@ -112,8 +112,14 @@ func ipReservation(ipAddr string) types.IPReservation {
 	return types.IPReservation{IP: net.ParseIP(ipAddr)}
 }
 
+var _ storage.IPPool = &mockedPool{}
+
 type mockedPool struct {
 	reservations []types.IPReservation
+}
+
+func (mp *mockedPool) GetIPNet() *net.IPNet {
+	return nil
 }
 
 func NewMockedPool(ipReservations ...types.IPReservation) *mockedPool {

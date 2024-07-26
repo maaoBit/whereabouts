@@ -20,13 +20,18 @@ require (
 	k8s.io/kube-openapi v0.0.0-20231010175941-2dd684a91f00
 )
 
-require github.com/go-co-op/gocron/v2 v2.5.0
+require (
+	github.com/go-co-op/gocron/v2 v2.5.0
+	github.com/k8snetworkplumbingwg/sriovnet v1.2.0
+	github.com/vishvananda/netlink v1.2.1-beta.2
+)
 
 require (
 	github.com/emicklei/go-restful/v3 v3.11.0 // indirect
 	github.com/google/gnostic-models v0.6.8 // indirect
 	github.com/jonboulle/clockwork v0.4.0 // indirect
 	github.com/robfig/cron/v3 v3.0.1 // indirect
+	github.com/spf13/afero v1.9.4 // indirect
 	github.com/vishvananda/netns v0.0.4 // indirect
 	golang.org/x/exp v0.0.0-20240416160154-fe59bbe5cc7f // indirect
 	sigs.k8s.io/json v0.0.0-20221116044647-bc3834ca7abd // indirect
@@ -68,7 +73,7 @@ require (
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	k8s.io/gengo v0.0.0-20230829151522-9cce18d56c01 // indirect
-	k8s.io/klog/v2 v2.110.1 // indirect
+	k8s.io/klog/v2 v2.110.1
 	k8s.io/utils v0.0.0-20230726121419-3b25d923346b
 	sigs.k8s.io/structured-merge-diff/v4 v4.4.1 // indirect
 	sigs.k8s.io/yaml v1.3.0 // indirect

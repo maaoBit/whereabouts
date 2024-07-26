@@ -384,6 +384,10 @@ type dummyPool struct {
 	pool    v1alpha1.IPPool
 }
 
+func (dp dummyPool) GetIPNet() *net.IPNet {
+	return nil
+}
+
 func (dp dummyPool) Allocations() []types.IPReservation {
 	return dp.orphans
 }

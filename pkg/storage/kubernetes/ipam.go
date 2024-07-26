@@ -93,12 +93,12 @@ func (i *KubernetesIPAM) GetIPPool(ctx context.Context, poolIdentifier PoolIdent
 		return nil, err
 	}
 
-	firstIP, _, err := pool.ParseCIDR()
+	firstIP, ipCIDR, err := pool.ParseCIDR()
 	if err != nil {
 		return nil, err
 	}
 
-	return &KubernetesIPPool{i.client, firstIP, pool}, nil
+	return &KubernetesIPPool{i.client, firstIP, ipCIDR, pool}, nil
 }
 
 func (i *KubernetesIPAM) getPool(ctx context.Context, name string, iprange string) (*whereaboutsv1alpha1.IPPool, error) {
@@ -163,7 +163,12 @@ func (i *KubernetesIPAM) Close() error {
 type KubernetesIPPool struct {
 	client  wbclient.Interface
 	firstIP net.IP
+	IPCidr  *net.IPNet
 	pool    *whereaboutsv1alpha1.IPPool
+}
+
+func (p *KubernetesIPPool) GetIPNet() *net.IPNet {
+	return p.IPCidr
 }
 
 // Allocations returns the initially retrieved set of allocations for this pool
@@ -481,11 +486,20 @@ func IPManagementKubernetesUpdate(ctx context.Context, mode int, ipam *Kubernete
 		return newips, err
 	}
 
+	// get PF address if device is sriov vf
+	var pfAddr []net.Addr
+	if ipamConf.UsePFSubnet == true {
+		if ipamConf.DevicePciBusID != "" && IsSriovVF(ipamConf.DevicePciBusID) {
+			pfAddr = getPFAddressAccordingVF(ipamConf.DevicePciBusID)
+		}
+	}
+
 	// handle the ip add/del until successful
 	var overlappingrangeallocations []whereaboutstypes.IPReservation
 	var ipforoverlappingrangeupdate net.IP
 	skipOverlappingRangeUpdate := false
 	for _, ipRange := range ipamConf.IPRanges {
+		isPFSubnet := true
 	RETRYLOOP:
 		for j := 0; j < storage.DatastoreRetries; j++ {
 			select {
@@ -510,6 +524,15 @@ func IPManagementKubernetesUpdate(ctx context.Context, mode int, ipam *Kubernete
 				return newips, err
 			}
 
+			// 判断pf的地址是否在这个ippool，不在则不从这个ippool里进行分配
+			if len(pfAddr) != 0 {
+				if !addrsInIPPool(pfAddr, pool.GetIPNet()) {
+					logging.Debugf("pool %s doesn't contain pf address", pool.GetIPNet().String())
+					isPFSubnet = false
+					break
+				}
+				logging.Debugf("pool %s contain pf address", pool.GetIPNet().String())
+			}
 			reservelist := pool.Allocations()
 			reservelist = append(reservelist, overlappingrangeallocations...)
 			var updatedreservelist []whereaboutstypes.IPReservation
@@ -578,6 +601,9 @@ func IPManagementKubernetesUpdate(ctx context.Context, mode int, ipam *Kubernete
 			break RETRYLOOP
 		}
 
+		if !isPFSubnet {
+			continue
+		}
 		if ipamConf.OverlappingRanges {
 			if !skipOverlappingRangeUpdate {
 				err = overlappingrangestore.UpdateOverlappingRangeAllocation(requestCtx, mode, ipforoverlappingrangeupdate,
@@ -600,4 +626,46 @@ func wbNamespaceFromCtx(ctx *clientcmdapi.Context) string {
 		return metav1.NamespaceSystem
 	}
 	return namespace
+}
+
+func getPFAddressAccordingVF(vfPCI string) []net.Addr {
+	pfName, err := GetPfName(vfPCI)
+	if err != nil {
+		logging.Errorf("GetPfName: %v", err)
+		return nil
+	}
+	if pfName == "" {
+		logging.Debugf("%s is not sriov vf", vfPCI)
+		return nil
+	}
+	logging.Debugf("getPFAddressAccordingVF: get pf %s of vf %s", pfName, vfPCI)
+	i, err := net.InterfaceByName(pfName)
+	if err != nil {
+		logging.Errorf("InterfaceByName: %v", err)
+		return nil
+	}
+	addrs, err := i.Addrs()
+	if err != nil {
+		logging.Errorf("Addrs: %v", err)
+		return nil
+	}
+	return addrs
+}
+
+func addrsInIPPool(addrs []net.Addr, ippool *net.IPNet) bool {
+	logging.Debugf("addrsInIPPool: ippool %s", ippool.String())
+	for _, addr := range addrs {
+		var ip net.IP
+		switch v := addr.(type) {
+		case *net.IPNet:
+			ip = v.IP
+		case *net.IPAddr:
+			ip = v.IP
+		}
+		logging.Debugf("addrsInIPPool: get pf ip %s", ip.String())
+		if ippool.Contains(ip) {
+			return true
+		}
+	}
+	return false
 }

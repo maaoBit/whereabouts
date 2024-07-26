@@ -25,6 +25,8 @@ const (
 type Net struct {
 	Name       string      `json:"name"`
 	CNIVersion string      `json:"cniVersion"`
+	DeviceID   string      `json:"deviceID"`
+	PciBusID   string      `json:"pciBusID"`
 	IPAM       *IPAMConfig `json:"ipam"`
 }
 
@@ -65,12 +67,14 @@ type IPAMConfig struct {
 	ReconcilerCronExpression string               `json:"reconciler_cron_expression,omitempty"`
 	OverlappingRanges        bool                 `json:"enable_overlapping_ranges,omitempty"`
 	SleepForRace             int                  `json:"sleep_for_race,omitempty"`
+	UsePFSubnet              bool                 `json:"use_pf_subnet,omitempty"`
 	Gateway                  net.IP
 	Kubernetes               KubernetesConfig `json:"kubernetes,omitempty"`
 	ConfigurationPath        string           `json:"configuration_path"`
 	PodName                  string
 	PodNamespace             string
 	NetworkName              string `json:"network_name,omitempty"`
+	DevicePciBusID           string
 }
 
 func (ic *IPAMConfig) UnmarshalJSON(data []byte) error {
@@ -101,12 +105,14 @@ func (ic *IPAMConfig) UnmarshalJSON(data []byte) error {
 		ReconcilerCronExpression string               `json:"reconciler_cron_expression,omitempty"`
 		OverlappingRanges        bool                 `json:"enable_overlapping_ranges,omitempty"`
 		SleepForRace             int                  `json:"sleep_for_race,omitempty"`
+		UsePFSubnet              bool                 `json:"use_pf_subnet,omitempty"`
 		Gateway                  string
 		Kubernetes               KubernetesConfig `json:"kubernetes,omitempty"`
 		ConfigurationPath        string           `json:"configuration_path"`
 		PodName                  string
 		PodNamespace             string
 		NetworkName              string `json:"network_name,omitempty"`
+		DevicePciBusID           string
 	}
 
 	ipamConfigAlias := IPAMConfigAlias{
@@ -137,6 +143,7 @@ func (ic *IPAMConfig) UnmarshalJSON(data []byte) error {
 		OverlappingRanges:        ipamConfigAlias.OverlappingRanges,
 		ReconcilerCronExpression: ipamConfigAlias.ReconcilerCronExpression,
 		SleepForRace:             ipamConfigAlias.SleepForRace,
+		UsePFSubnet:              ipamConfigAlias.UsePFSubnet,
 		Gateway:                  backwardsCompatibleIPAddress(ipamConfigAlias.Gateway),
 		Kubernetes:               ipamConfigAlias.Kubernetes,
 		ConfigurationPath:        ipamConfigAlias.ConfigurationPath,
